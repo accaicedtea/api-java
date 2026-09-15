@@ -1,0 +1,96 @@
+services:
+
+  # ============================================================
+  # 1) DATABASE — MariaDB, root senza password
+  # ============================================================
+  db:
+    image: mariadb:11
+    container_name: risto_db
+    restart: unless-stopped
+    command:
+      - --innodb-buffer-pool-size=512M
+      - --max-connections=100
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+      MARIADB_DATABASE: acca_kirby
+      TZ: Europe/Rome
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./backup:/backup
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+    networks:
+      - risto_net
+
+  # ============================================================
+  # 2) BACKEND — Spring Boot, si connette come root
+  # ============================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: risto_backend:latest
+    container_name: risto_backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: acca_kirby
+      DB_USERNAME: root
+      # DB_PASSWORD volutamente omesso → Spring usa default vuoto
+      TZ: Europe/Rome
+      JAVA_OPTS: "-Xms256m -Xmx768m -XX:+UseZGC"
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1.2G
+    stop_grace_period: 30s
+    networks:
+      - risto_net
+
+  # ============================================================
+  # 3) FRONTEND — Vue + Nginx (espone porta 80)
+  # ============================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: risto_frontend:latest
+    container_name: risto_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      TZ: Europe/Rome
+    depends_on:
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - risto_net
+
+# ============================================================
+volumes:
+  mariadb_data:
+
+networks:
+  risto_net:
+    driver: bridge

@@ -1,0 +1,88 @@
+spring:
+  application:
+    name: ristoranteApp
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:acca_kirby}?useSSL=false&serverTimezone=Europe/Rome&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MariaDBDialect
+        format_sql: true
+        jdbc:
+          time_zone: Europe/Rome
+
+  jackson:
+    time-zone: Europe/Rome
+    default-property-inclusion: non_null
+
+  # ============================================================
+  # CACHING — L1 locale con Caffeine
+  # ============================================================
+  cache:
+    type: caffeine
+    cache-names: allergeni,menuPubblici,categorie,prodotti,aziende,dashboard
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=10m,recordStats
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+
+logging:
+  level:
+    com.accasw.ristoranteApp: DEBUG
+    org.springframework.security: INFO
+    # Per debug cache (attiva quando serve):
+    # org.springframework.cache: TRACE
+
+# ============================================================
+# ACTUATOR — solo endpoint sicuri
+# ============================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,caches
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    enable:
+      cache: true
+      hikaricp: true
+      jvm: true
+
+# ============================================================
+# CONFIG APPLICATIVA
+# ============================================================
+app:
+  # --- First-run: crea azienda + admin + manager al primo avvio ---
+  first-run:
+    enabled: true # metti false dopo il primo avvio in prod
+    azienda:
+      tenant-id: 1
+      piano-id: 1
+      nome: "Il Mio Ristorante"
+      ragione-sociale: "Il Mio Ristorante S.R.L."
+      email: "info@mioristorante.it"
+      telefono: ""
+      citta: ""
+      indirizzo: ""
+      paese: "IT"
+      stato: "trial"
+      pin: "1234"
+    admin:
+      username: admin@mioristorante.it
+      password: admin123 # cambiala subito dopo il primo login!
+    manager:
+      username: manager@mioristorante.it
+      password: manager123 # cambiala subito dopo il primo login!

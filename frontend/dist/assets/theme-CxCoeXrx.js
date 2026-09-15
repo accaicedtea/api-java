@@ -1,0 +1,1 @@
+import{z as e}from"./runtime-core.esm-bundler-CjFjW2Yn.js";var t=e(`osteria`),n=[{id:`osteria`,label:`Osteria`},{id:`poster`,label:`Poster`},{id:`rock`,label:`Rock`},{id:`serra`,label:`Serra`},{id:`riviera`,label:`Riviera`}];export{n,t};
