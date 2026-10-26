@@ -1,6 +1,7 @@
 package com.accasw.ristoranteApp.service;
 
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.*;
 
 import org.springframework.cache.annotation.CacheEvict;
@@ -29,17 +30,19 @@ public class JdbcCrudService {
         validateTable(table);
         return jdbc.queryForList(
                 "SELECT * FROM " + table +
-                " WHERE azienda_id = ? AND deleted_at IS NULL ORDER BY id DESC",
+                        " WHERE azienda_id = ? AND deleted_at IS NULL ORDER BY id DESC",
                 aziendaId);
     }
 
     public List<Map<String, Object>> listPaginated(String table, Long aziendaId, int limit, int offset) {
         validateTable(table);
-        if (limit <= 0 || limit > 500) limit = 50;
-        if (offset < 0) offset = 0;
+        if (limit <= 0 || limit > 500)
+            limit = 50;
+        if (offset < 0)
+            offset = 0;
         return jdbc.queryForList(
                 "SELECT * FROM " + table +
-                " WHERE azienda_id = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT ? OFFSET ?",
+                        " WHERE azienda_id = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT ? OFFSET ?",
                 aziendaId, limit, offset);
     }
 
@@ -48,7 +51,8 @@ public class JdbcCrudService {
      * quando insert/update/softDelete toccano la tabella 'allergeni'.
      *
      * Key SpEL: se aziendaId è null → 'system', altrimenti il valore numerico.
-     * Così la cache per gli allergeni di sistema è separata da quella delle aziende.
+     * Così la cache per gli allergeni di sistema è separata da quella delle
+     * aziende.
      */
     @Cacheable(value = "allergeni", key = "#aziendaId == null ? 'system' : #aziendaId")
     public List<Map<String, Object>> listAllergens(Long aziendaId) {
@@ -58,14 +62,15 @@ public class JdbcCrudService {
         }
         return jdbc.queryForList(
                 "SELECT * FROM allergeni WHERE (azienda_id = ? OR azienda_id IS NULL) " +
-                "AND deleted_at IS NULL ORDER BY id", aziendaId);
+                        "AND deleted_at IS NULL ORDER BY id",
+                aziendaId);
     }
 
     public List<Map<String, Object>> findRows(String table, Long id, Long aziendaId) {
         validateTable(table);
         return jdbc.queryForList(
                 "SELECT * FROM " + table +
-                " WHERE id = ? AND azienda_id = ? AND deleted_at IS NULL",
+                        " WHERE id = ? AND azienda_id = ? AND deleted_at IS NULL",
                 id, aziendaId);
     }
 
@@ -81,8 +86,18 @@ public class JdbcCrudService {
         validateTable(table);
         Long n = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM " + table +
-                " WHERE azienda_id = ? AND deleted_at IS NULL",
+                        " WHERE azienda_id = ? AND deleted_at IS NULL",
                 Long.class, aziendaId);
+        return n == null ? 0L : n;
+    }
+
+    public long countFromDate(String table, Long aziendaId, String dateColumn, java.time.LocalDate fromDate) {
+        validateTable(table); // Mantiene la tua validazione di sicurezza
+
+        String sql = "SELECT COUNT(*) FROM " + table +
+                " WHERE azienda_id = ? AND deleted_at IS NULL AND " + dateColumn + " >= ?";
+
+        Long n = jdbc.queryForObject(sql, Long.class, aziendaId, fromDate);
         return n == null ? 0L : n;
     }
 
@@ -103,7 +118,8 @@ public class JdbcCrudService {
         validateColumn(column);
         return jdbc.queryForList(
                 "SELECT * FROM " + table +
-                " WHERE " + column + " = ? AND deleted_at IS NULL ORDER BY id DESC", value);
+                        " WHERE " + column + " = ? AND deleted_at IS NULL ORDER BY id DESC",
+                value);
     }
 
     // ============================================================
@@ -121,17 +137,20 @@ public class JdbcCrudService {
                 values.add(v);
             }
         });
-        if (columns.isEmpty()) throw new IllegalArgumentException("Nessun dato valido fornito");
+        if (columns.isEmpty())
+            throw new IllegalArgumentException("Nessun dato valido fornito");
         String placeholders = String.join(", ", Collections.nCopies(columns.size(), "?"));
         String sql = "INSERT INTO " + table + " (" + String.join(", ", columns) + ") VALUES (" + placeholders + ")";
         KeyHolder kh = new GeneratedKeyHolder();
         jdbc.update(con -> {
             var ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            for (int i = 0; i < values.size(); i++) ps.setObject(i + 1, values.get(i));
+            for (int i = 0; i < values.size(); i++)
+                ps.setObject(i + 1, values.get(i));
             return ps;
         }, kh);
         Number key = kh.getKey();
-        if (key == null) throw new IllegalStateException("Impossibile recuperare la chiave generata");
+        if (key == null)
+            throw new IllegalStateException("Impossibile recuperare la chiave generata");
         return key.longValue();
     }
 
@@ -146,12 +165,13 @@ public class JdbcCrudService {
                 values.add(v);
             }
         });
-        if (assignments.isEmpty()) throw new IllegalArgumentException("Nessun dato valido fornito");
+        if (assignments.isEmpty())
+            throw new IllegalArgumentException("Nessun dato valido fornito");
         values.add(id);
         values.add(aziendaId);
         return jdbc.update(
                 "UPDATE " + table + " SET " + String.join(", ", assignments) +
-                " WHERE id = ? AND azienda_id = ? AND deleted_at IS NULL",
+                        " WHERE id = ? AND azienda_id = ? AND deleted_at IS NULL",
                 values.toArray());
     }
 
@@ -160,7 +180,7 @@ public class JdbcCrudService {
         validateTable(table);
         return jdbc.update(
                 "UPDATE " + table + " SET deleted_at = CURRENT_TIMESTAMP " +
-                "WHERE id = ? AND azienda_id = ? AND deleted_at IS NULL",
+                        "WHERE id = ? AND azienda_id = ? AND deleted_at IS NULL",
                 id, aziendaId);
     }
 
